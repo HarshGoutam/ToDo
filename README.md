@@ -1,7 +1,7 @@
 # ToDo
 An iOS Daily Task Manager Application
 # Features
-1. CoreData integeration for data persistence
+### 1. CoreData integeration for data persistence
 
  ![Simulator Screen Shot - iPhone 12 mini - 2022-02-08 at 16 11 27](https://user-images.githubusercontent.com/87484626/154986027-373046da-dac6-4e61-bdd3-5c76c100043b.png)
 
