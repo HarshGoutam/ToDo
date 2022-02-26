@@ -8,6 +8,8 @@ An iOS Daily Task Manager Application
 
 ### 2. Widget sets(small, medium, large) for iOS & iPadOS
 
+![Simulator Screen Shot - iPhone 13 Pro Max - 2022-02-26 at 17 55 55](https://user-images.githubusercontent.com/87484626/155843109-198895b8-3347-4fe1-bc46-ac888e0b375f.png)
+
 
 ### 3. Haptics & sound effects
 
