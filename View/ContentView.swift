@@ -1,180 +1,148 @@
-//
-//  ContentView.swift
-//  ToDo
-//
-//  Created by Harsh Goutam on 07/02/22.
-//
-
 import SwiftUI
-import CoreData
 
 struct ContentView: View {
-    //MARK: - property
-    @AppStorage("isDarkMode") private var isDarkMode: Bool = false
-    @State var task: String = ""
-    @State var shownewTaskItem:Bool = false
-    private var isbuttonDisabled: Bool{
-        task.isEmpty
-    }
-    //MARK: - fetching data
-    @Environment(\.managedObjectContext) private var viewContext
-
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
-    
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+  // MARK: - PROPERTIES
+  
+  @Environment(\.managedObjectContext) var managedObjectContext
+  
+  @FetchRequest(entity: Todo.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \Todo.name, ascending: true)]) var todos: FetchedResults<Todo>
+  
+  @EnvironmentObject var iconSettings: IconNames
+  @State private var showingSettingsView: Bool = false
+  @State private var showingAddTodoView: Bool = false
+  @State private var animatingButton: Bool = false
+  
+  // THEME properties
+  @ObservedObject var theme = ThemeSettings.shared
+  var themes: [Theme] = themeData
+  
+  // MARK: - BODY
+  
+  var body: some View {
+    NavigationView {
+      ZStack {
+        List {
+          ForEach(self.todos, id: \.self) { todo in
+            HStack {
+              Circle()
+                .frame(width: 12, height: 12, alignment: .center)
+                .foregroundColor(self.colorize(priority: todo.priority ?? "Normal"))
+              Text(todo.name ?? "Unknown")
+                .fontWeight(.semibold)
+              
+              Spacer()
+              
+              Text(todo.priority ?? "Unkown")
+                .font(.footnote)
+                .foregroundColor(Color(UIColor.systemGray2))
+                .padding(3)
+                .frame(minWidth: 62)
+                .overlay(
+                  Capsule().stroke(Color(UIColor.systemGray2), lineWidth: 0.75)
+              )
+            } //: HSTACK
+              .padding(.vertical, 10)
+          } //: FOREACH
+          .onDelete(perform: deleteTodo)
+        } //: LIST
+          .navigationBarTitle("Todo", displayMode: .inline)
+          .navigationBarItems(
+            leading: EditButton().accentColor(themes[self.theme.themeSettings].themeColor),
+            trailing:
+            Button(action: {
+              self.showingSettingsView.toggle()
+            }) {
+              Image(systemName: "paintbrush")
+                .imageScale(.large)
+            } //: SETTINGS BUTTON
+              .accentColor(themes[self.theme.themeSettings].themeColor)
+              .sheet(isPresented: $showingSettingsView) {
+                SettingsView().environmentObject(self.iconSettings)
             }
+        )
+        
+        // MARK: - NO TODO ITEMS
+        if todos.count == 0 {
+          EmptyListView()
         }
-    }
-
-    var body: some View {
-        NavigationView {
-            ZStack {
-                //MARK: - main
-                VStack {
-                    HStack(spacing: 10){
-                        //title
-                        Text("To Do")
-                            .font(.system(.largeTitle, design: .rounded))
-                            .fontWeight(.heavy)
-                            .padding(.leading, 4)
-                                    
-                        Spacer()
-                        //edit button
-                        EditButton()
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .padding(.horizontal, 10)
-                            .frame(minWidth: 70, minHeight: 24)
-                            .background(
-                            Capsule().stroke(Color.white, lineWidth: 2)
-                        )
-                        //apperance button
-                        Button(action: {
-                        // TOGGLE APPEARANCE
-                            isDarkMode.toggle()
-                            playSound(sound: "sound-tap", type: "mp3")
-                            feedback.notificationOccurred(.success)
-                            }, label: {
-                                Image(systemName: isDarkMode ? "moon.circle.fill" : "moon.circle")
-                            .resizable()
-                            .frame(width: 24, height: 24)
-                            .font(.system(.title, design: .rounded))
-                            })
-                        
-                    }
-                    .padding()
-                    .foregroundColor(.white)
-                    //MARK: - header
-                    Spacer(minLength: 80)
-                    Button(action: {
-                                shownewTaskItem = true
-                                playSound(sound: "sound-ding", type: "mp3")
-                                feedback.notificationOccurred(.success)
-                              }, label: {
-                                Image(systemName: "plus.circle")
-                                  .font(.system(size: 30, weight: .semibold, design: .rounded))
-                                Text("New Task")
-                                  .font(.system(size: 24, weight: .bold, design: .rounded))
-                              })
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 15)
-                        .background(
-                            LinearGradient(gradient: Gradient(colors: [Color.pink,Color.blue]), startPoint: .leading, endPoint: .trailing)
-                                .clipShape(Capsule())
-                                  )
-                        .shadow(color: Color(red: 0, green: 0, blue: 0, opacity: 0.25), radius: 8, x: 0.0, y: 4.0)
-                    
-                    
-//                    VStack(spacing: 16){
-//
-////                        Button(action:{
-////                                            addItem()
-////                                        }, label: {
-////                                            Spacer()
-////                                            Text("Save")
-////                                            Spacer()
-////                                        })
-////                            .disabled(isbuttonDisabled)
-////                                            .padding()
-////                                            .font(.headline)
-////                                            .foregroundColor(.white)
-////                                            .background(isbuttonDisabled ? Color.gray: Color.pink)
-////                                            .cornerRadius(10)
-//                    }.padding()
-                    
-                    List {
-                        ForEach(items) { item in
-                            ListItem(item: item)
-//                            NavigationLink {
-//                                VStack (alignment: .leading){
-//                                    Text(item.task ?? "")
-//                                        .font(.headline)
-//                                        .fontWeight(.bold)
-//                                    Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-//                                        .font(.footnote)
-//                                        .foregroundColor(.gray)
-//                                }
-//                            } label: {
-//                                Text(item.timestamp!, formatter: itemFormatter)
-//                            }
-                        }
-                        .onDelete(perform: deleteItems)
-                    }
-                    .listStyle(InsetGroupedListStyle())
-                    .shadow(color: Color(red: 0, green: 0, blue: 0,opacity: 0.3), radius: 12)
-                    .padding(.vertical,0)
-                    .frame(maxWidth: 640)
-                }
-                
-                if shownewTaskItem{
-                    BlankView(backgroundColor: .white, backgroundOpacity: 0)
-                        .onTapGesture {
-                            withAnimation(){
-                                shownewTaskItem = false
-                            }
-                        }
-                    NewTask(isShowing: $shownewTaskItem)
-                }
-            }.onAppear(){
-                UITableView.appearance().backgroundColor = UIColor.clear
-                
-            }
-                
-                    .navigationBarTitle("Daily To Do Tasks",displayMode: .large)
-                    .navigationBarHidden(true)
-                .background(
-                    BackgroundImageView()
-                )
-                .background(
-                    backgroundGradient.ignoresSafeArea(.all
-                    ))
-            }
-            .navigationViewStyle(StackNavigationViewStyle())
+      } //: ZSTACK
+        .sheet(isPresented: $showingAddTodoView) {
+          AddTodoView().environment(\.managedObjectContext, self.managedObjectContext)
         }
+        .overlay(
+          ZStack {
+            Group {
+              Circle()
+                .fill(themes[self.theme.themeSettings].themeColor)
+                .opacity(self.animatingButton ? 0.2 : 0)
+                //.scaleEffect(self.animatingButton ? 1 : 0)
+                .frame(width: 68, height: 68, alignment: .center)
+              Circle()
+                .fill(themes[self.theme.themeSettings].themeColor)
+                .opacity(self.animatingButton ? 0.15 : 0)
+                //.scaleEffect(self.animatingButton ? 1 : 0)
+                .frame(width: 88, height: 88, alignment: .center)
+            }
+            //.animation(Animation.easeInOut(duration: 2).repeatForever(autoreverses: true))
+            
+            Button(action: {
+              self.showingAddTodoView.toggle()
+            }) {
+              Image(systemName: "plus.circle.fill")
+                .resizable()
+                .scaledToFit()
+                .background(Circle().fill(Color("ColorBase")))
+                .frame(width: 48, height: 48, alignment: .center)
+            } //: BUTTON
+              .accentColor(themes[self.theme.themeSettings].themeColor)
+              .onAppear(perform: {
+                 self.animatingButton.toggle()
+              })
+          } //: ZSTACK
+            .padding(.bottom, 15)
+            .padding(.trailing, 15)
+            , alignment: .bottomTrailing
+        )
+    } //: NAVIGATION
+      .navigationViewStyle(StackNavigationViewStyle())
+  }
+  
+  // MARK: - FUNCTIONS
+  
+  private func deleteTodo(at offsets: IndexSet) {
+    for index in offsets {
+      let todo = todos[index]
+      managedObjectContext.delete(todo)
+      
+      do {
+        try managedObjectContext.save()// update the database
+      } catch {
+        print(error)
+      }
+    }
+  }
+  
+  private func colorize(priority: String) -> Color {
+    switch priority {
+    case "High":
+      return .pink
+    case "Normal":
+      return .green
+    case "Low":
+      return .blue
+    default:
+      return .gray
+    }
+  }
 }
-    
 
-    
-
-    
-
-
+// MARK: - PREVIEW
 
 struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-    }
+  static var previews: some View {
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+      return ContentView()
+        .environment(\.managedObjectContext, context)
+        .previewDevice("iPhone 15 Pro")
+  }
 }
